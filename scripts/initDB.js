@@ -1,11 +1,14 @@
 const mongoose = require('mongoose');
-require('dotenv').config();
+const path = require('path');
+
+// Backend'deki .env dosyasını yükle
+require('dotenv').config({ path: path.join(__dirname, '../backend/.env') });
 
 // MongoDB'ye bağlan
 async function initializeDatabase() {
   try {
     console.log('MongoDB\'ye bağlanılıyor...');
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/kurumsal_yonetim_platform', {
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/jams', {
       useNewUrlParser: true,
       useUnifiedTopology: true
     });
@@ -33,8 +36,9 @@ async function initializeDatabase() {
       }
     }
     
-    // Default roles oluştur
-    await createDefaultRoles();
+    // Default data oluştur
+    const { initializeDefaultData } = require('../backend/src/utils/defaultData');
+    await initializeDefaultData();
     
     console.log('🎉 Veritabanı initialization tamamlandı');
     
@@ -43,74 +47,6 @@ async function initializeDatabase() {
   } finally {
     await mongoose.disconnect();
     console.log('🔌 MongoDB bağlantısı kapatıldı');
-  }
-}
-
-async function createDefaultRoles() {
-  try {
-    const Role = require('../src/models/Role');
-    
-    // Varsayılan roller
-    const defaultRoles = [
-      {
-        name: 'ADMIN',
-        displayName: 'Sistem Yöneticisi',
-        description: 'Tüm sistem yetkilerine sahip',
-        permissions: {
-          users: { create: true, read: true, update: true, delete: true },
-          inventory: { create: true, read: true, update: true, delete: true },
-          locations: { create: true, read: true, update: true, delete: true },
-          passwords: { create: true, read: true, update: true, delete: true },
-          servers: { create: true, read: true, update: true, delete: true },
-          audit: { create: true, read: true, update: true, delete: true }
-        },
-        isSystemRole: true,
-        isActive: true
-      },
-      {
-        name: 'USER',
-        displayName: 'Kullanıcı',
-        description: 'Temel kullanıcı yetkileri',
-        permissions: {
-          users: { create: false, read: true, update: false, delete: false },
-          inventory: { create: false, read: true, update: false, delete: false },
-          locations: { create: false, read: true, update: false, delete: false },
-          passwords: { create: false, read: false, update: false, delete: false },
-          servers: { create: false, read: false, update: false, delete: false },
-          audit: { create: false, read: false, update: false, delete: false }
-        },
-        isSystemRole: true,
-        isActive: true
-      },
-      {
-        name: 'OBSERVER',
-        displayName: 'Gözlemci',
-        description: 'Sadece görüntüleme yetkisi',
-        permissions: {
-          users: { create: false, read: true, update: false, delete: false },
-          inventory: { create: false, read: true, update: false, delete: false },
-          locations: { create: false, read: true, update: false, delete: false },
-          passwords: { create: false, read: false, update: false, delete: false },
-          servers: { create: false, read: false, update: false, delete: false },
-          audit: { create: false, read: false, update: false, delete: false }
-        },
-        isSystemRole: true,
-        isActive: true
-      }
-    ];
-    
-    for (const roleData of defaultRoles) {
-      const existingRole = await Role.findOne({ name: roleData.name });
-      if (!existingRole) {
-        await Role.create(roleData);
-        console.log(`✅ ${roleData.name} rolü oluşturuldu`);
-      } else {
-        console.log(`ℹ️  ${roleData.name} rolü zaten mevcut`);
-      }
-    }
-    
-  } catch (error) {
-    console.error('❌ Rol oluşturma hatası:', error);
   }
 }
 

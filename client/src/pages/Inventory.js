@@ -17,16 +17,12 @@ import {
   Chip,
   Alert,
   Grid,
-  Card,
-  CardContent,
-  CardActions,
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import {
   Add as AddIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Computer as ComputerIcon,
   Refresh as RefreshIcon,
 } from '@mui/icons-material';
 import api from '../services/api';
@@ -382,12 +378,10 @@ export default function Inventory() {
           <DialogActions>
             <Button onClick={handleClose}>İptal</Button>
             <Button type="submit" variant="contained" disabled={loading}>
-              {loading ? 'Kaydediliyor...' : 'Kaydet'}
-            </Button>
+              {loading ? 'Kaydediliyor...' : 'Kaydet'}        </Button>
           </DialogActions>
         </form>
       </Dialog>
     </Box>
   );
-}
 }

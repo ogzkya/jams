@@ -7,6 +7,7 @@ const AuditLog = require('../models/AuditLog');
 const Device = require('../models/Device');
 const { logAuditEvent } = require('../utils/auditHelper');
 const { encrypt, decrypt } = require('../utils/encryption');
+const { logError } = require('../../../utils/errorLogger'); // errorLogger'ı içe aktar
 
 const execAsync = promisify(exec);
 
@@ -94,6 +95,7 @@ const getAvailableCommands = async (req, res) => {
     });
 
   } catch (error) {
+    logError('Komutlar listelenirken hata oluştu (serverController):', error);
     res.status(500).json({
       success: false,
       message: 'Komutlar listelenirken hata oluştu'
@@ -241,6 +243,7 @@ const executeCommand = async (req, res) => {
     }
 
   } catch (error) {
+    logError('Komut çalıştırılırken sistem hatası oluştu (serverController):', error, { commandKey: req.body?.commandKey });
     res.status(500).json({
       success: false,
       message: 'Komut çalıştırılırken sistem hatası oluştu'
@@ -352,6 +355,7 @@ const getSystemStatus = async (req, res) => {
     });
 
   } catch (error) {
+    logError('Sistem durumu alınırken hata oluştu (serverController):', error);
     res.status(500).json({
       success: false,
       message: 'Sistem durumu alınırken hata oluştu'
@@ -392,34 +396,29 @@ const pingDevices = async (req, res) => {
       const name = typeof target === 'string' ? ip : target.name;
       
       try {
-        const { stdout } = await execAsync(`ping -n 4 ${ip}`, { 
-          timeout: 10000,
-          shell: 'cmd.exe'
-        });
-
-        // Ping sonucunu analiz et
-        const success = stdout.includes('TTL=');
-        const packetLoss = stdout.match(/\((\d+)% loss\)/);
-        const avgTime = stdout.match(/Average = (\d+)ms/);
-
+        const startTime = Date.now();
+        // Not: -n 1 (Windows) veya -c 1 (Linux/macOS) platforma göre ayarlanmalı veya platforma özel bir ping kütüphanesi kullanılmalı.
+        // Şimdilik Windows varsayımıyla devam edelim.
+        await execAsync(`ping -n 1 ${ip}`, { timeout: 5000 });
+        const responseTime = Date.now() - startTime;
         results.push({
           ip,
           name,
-          deviceId: typeof target === 'object' ? target.deviceId : null,
-          success,
-          packetLoss: packetLoss ? parseInt(packetLoss[1]) : null,
-          averageTime: avgTime ? parseInt(avgTime[1]) : null,
-          output: stdout
+          deviceId: target.deviceId,
+          success: true,
+          responseTime,
+          message: 'Ping başarılı'
         });
-
       } catch (error) {
         results.push({
           ip,
           name,
-          deviceId: typeof target === 'object' ? target.deviceId : null,
+          deviceId: target.deviceId,
           success: false,
+          message: 'Ping başarısız',
           error: error.message
         });
+        logError(`Ping testi hatası (serverController - ${ip}):`, error);
       }
     }
 
@@ -456,6 +455,7 @@ const pingDevices = async (req, res) => {
     });
 
   } catch (error) {
+    logError('Ping testi sırasında hata oluştu (serverController):', error, { body: req.body });
     res.status(500).json({
       success: false,
       message: 'Ping testi sırasında hata oluştu'
@@ -502,6 +502,7 @@ const getCommandHistory = async (req, res) => {
     });
 
   } catch (error) {
+    logError('Komut geçmişi alınırken hata oluştu (serverController):', error, { userId: req.user?._id });
     res.status(500).json({
       success: false,
       message: 'Komut geçmişi alınırken hata oluştu'
@@ -577,7 +578,7 @@ const getAllServers = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Sunucu listesi getirme hatası:', error);
+    logError('Sunucu listesi getirme hatası (serverController):', error, { query: req.query });
     res.status(500).json({
       success: false,
       message: 'Sunucular getirilemedi'
@@ -618,7 +619,7 @@ const getServerById = async (req, res) => {
       data: server
     });
   } catch (error) {
-    console.error('Sunucu getirme hatası:', error);
+    logError('Sunucu getirme hatası (serverController):', error, { serverId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Sunucu getirilemedi'
@@ -670,7 +671,7 @@ const createServer = async (req, res) => {
       data: server
     });
   } catch (error) {
-    console.error('Sunucu oluşturma hatası:', error);
+    logError('Sunucu oluşturma hatası (serverController):', error, { body: req.body });
     res.status(500).json({
       success: false,
       message: 'Sunucu oluşturulamadı'
@@ -730,7 +731,7 @@ const updateServer = async (req, res) => {
       data: server
     });
   } catch (error) {
-    console.error('Sunucu güncelleme hatası:', error);
+    logError('Sunucu güncelleme hatası (serverController):', error, { serverId: req.params.id, body: req.body });
     res.status(500).json({
       success: false,
       message: 'Sunucu güncellenemedi'
@@ -773,7 +774,7 @@ const deleteServer = async (req, res) => {
       message: 'Sunucu başarıyla silindi'
     });
   } catch (error) {
-    console.error('Sunucu silme hatası:', error);
+    logError('Sunucu silme hatası (serverController):', error, { serverId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Sunucu silinemedi'
@@ -839,7 +840,7 @@ const checkServerStatus = async (req, res) => {
       req
     );
   } catch (error) {
-    console.error('Sunucu durum kontrolü hatası:', error);
+    logError('Sunucu durum kontrolü hatası (serverController):', error, { serverId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Sunucu durum kontrolü yapılamadı'
@@ -888,7 +889,7 @@ const getServerPerformance = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Sunucu performans getirme hatası:', error);
+    logError('Sunucu performans getirme hatası (serverController):', error, { serverId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Sunucu performans bilgileri getirilemedi'
@@ -914,7 +915,7 @@ const testConnection = async (req, res) => {
     const connectionTests = {
       ping: false,
       port: false,
-      ssh: false
+      ssh: false // SSH testi implemente edilmedi
     };
 
     // Ping testi
@@ -923,14 +924,36 @@ const testConnection = async (req, res) => {
       connectionTests.ping = true;
     } catch (error) {
       connectionTests.ping = false;
+      logError(`Bağlantı testi - Ping hatası (serverController - ${server.ipAddress}):`, error);
     }
 
     // Port testi (telnet benzeri)
-    try {
-      await execAsync(`powershell "Test-NetConnection -ComputerName ${server.ipAddress} -Port ${server.port}"`, { timeout: 10000 });
-      connectionTests.port = true;
-    } catch (error) {
-      connectionTests.port = false;
+    // Not: Bu basit bir TCP bağlantı denemesidir. Gerçek bir telnet istemcisi değildir.
+    // 'net' modülü gereklidir: const net = require('net'); (dosyanın başına ekleyin)
+    if (server.port) {
+      const net = require('net');
+      const portTestPromise = new Promise((resolve) => {
+        const socket = new net.Socket();
+        socket.setTimeout(3000); // 3 saniye zaman aşımı
+        socket.on('connect', () => {
+          connectionTests.port = true;
+          socket.destroy();
+          resolve();
+        });
+        socket.on('timeout', () => {
+          connectionTests.port = false;
+          socket.destroy();
+          resolve();
+        });
+        socket.on('error', (err) => {
+          connectionTests.port = false;
+          socket.destroy();
+          logError(`Bağlantı testi - Port ${server.port} hatası (serverController - ${server.ipAddress}):`, err);
+          resolve();
+        });
+        socket.connect(server.port, server.ipAddress);
+      });
+      await portTestPromise;
     }
 
     // Audit log
@@ -957,7 +980,7 @@ const testConnection = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Sunucu bağlantı testi hatası:', error);
+    logError('Sunucu bağlantı testi hatası (serverController):', error, { serverId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Sunucu bağlantı testi yapılamadı'
@@ -1004,7 +1027,7 @@ const getServerLogs = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Sunucu log getirme hatası:', error);
+    logError('Sunucu log getirme hatası (serverController):', error, { serverId: req.params.id });
     res.status(500).json({
       success: false,
       message: 'Sunucu logları getirilemedi'
@@ -1051,7 +1074,7 @@ const restartService = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Servis yeniden başlatma hatası:', error);
+    logError('Servis yeniden başlatma hatası (serverController):', error, { serverId: req.params.id, serviceName: req.body?.serviceName });
     res.status(500).json({
       success: false,
       message: 'Servis yeniden başlatılamadı'
@@ -1119,7 +1142,7 @@ const getServerStatistics = async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Sunucu istatistikleri getirme hatası:', error);
+    logError('Sunucu istatistikleri getirme hatası (serverController):', error);
     res.status(500).json({
       success: false,
       message: 'Sunucu istatistikleri getirilemedi'
@@ -1137,60 +1160,36 @@ const bulkExecuteCommand = async (req, res) => {
     if (!serverIds || !Array.isArray(serverIds) || serverIds.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Sunucu ID listesi gerekli'
+        message: 'Sunucu ID listesi (serverIds) gereklidir ve boş olamaz.'
       });
     }
-
-    const results = [];
-
-    for (const serverId of serverIds) {
-      try {
-        const server = await Server.findById(serverId);
-        if (!server) {
-          results.push({
-            serverId,
-            success: false,
-            error: 'Sunucu bulunamadı'
-          });
-          continue;
-        }
-
-        // Bu noktada gerçek SSH bağlantısı kurulup komut çalıştırılacak
-        // Şimdilik placeholder
-        results.push({
-          serverId,
-          serverName: server.name,
-          success: true,
-          output: 'Komut başarıyla çalıştırıldı (placeholder)'
-        });
-      } catch (error) {
-        results.push({
-          serverId,
-          success: false,
-          error: error.message
-        });
-      }
-    }
-
+    
+    // Bu özellik henüz tam olarak implemente edilmemiştir.
+    // Gerçek bir implementasyon için her sunucuya bağlanıp komutu çalıştırmak gerekir.
+    // Şimdilik bir "Not Implemented" yanıtı veya temel bir yapı döndürelim.
+    logError('Toplu komut çalıştırma özelliği henüz tam olarak implemente edilmedi (serverController).', null, { body: req.body });
+    
     // Audit log
     await logAuditEvent(
       req.user.id,
-      'SERVER_BULK_EXECUTE',
+      'SERVER_BULK_EXECUTE_ATTEMPT', // Eylem adını güncelledik
       'Server',
       null,
-      { serverIds, commandKey, parameters, resultCount: results.length },
+      { serverIds, commandKey, parameters, status: 'NOT_IMPLEMENTED' },
       req
     );
 
-    res.json({
-      success: true,
+    return res.status(501).json({
+      success: false,
+      message: 'Toplu komut çalıştırma özelliği henüz implemente edilmemiştir.',
       data: {
         totalServers: serverIds.length,
-        results
+        results: [] // Gerçek sonuçlar burada olmalı
       }
     });
+
   } catch (error) {
-    console.error('Toplu komut çalıştırma hatası:', error);
+    logError('Toplu komut çalıştırma hatası (serverController):', error, { body: req.body });
     res.status(500).json({
       success: false,
       message: 'Toplu komut çalıştırılamadı'
@@ -1205,71 +1204,37 @@ const healthCheck = async (req, res) => {
   try {
     const servers = await Server.find({ isActive: true }).select('name ipAddress status lastChecked');
     
-    const healthResults = [];
-
-    for (const server of servers) {
-      try {
-        const startTime = Date.now();
-        await execAsync(`ping -n 1 ${server.ipAddress}`, { timeout: 3000 });
-        const responseTime = Date.now() - startTime;
-        
-        healthResults.push({
-          serverId: server._id,
-          name: server.name,
-          ipAddress: server.ipAddress,
-          status: 'online',
-          responseTime,
-          lastChecked: new Date()
-        });
-
-        // Sunucu durumunu güncelle
-        await server.updateStatus('online', { networkLatency: responseTime });
-      } catch (error) {
-        healthResults.push({
-          serverId: server._id,
-          name: server.name,
-          ipAddress: server.ipAddress,
-          status: 'offline',
-          error: 'Ping başarısız',
-          lastChecked: new Date()
-        });
-
-        // Sunucu durumunu güncelle
-        await server.updateStatus('offline');
-      }
-    }
-
-    // Özet istatistikler
-    const summary = {
-      total: healthResults.length,
-      online: healthResults.filter(r => r.status === 'online').length,
-      offline: healthResults.filter(r => r.status === 'offline').length,
-      avgResponseTime: healthResults
-        .filter(r => r.responseTime)
-        .reduce((sum, r) => sum + r.responseTime, 0) / 
-        healthResults.filter(r => r.responseTime).length || 0
-    };
+    // Bu özellik henüz tam olarak implemente edilmemiştir.
+    // Gerçek bir implementasyon için her sunucunun sağlık durumunu kontrol etmek gerekir.
+    // Şimdilik bir "Not Implemented" yanıtı veya temel bir yapı döndürelim.
+    logError('Toplu sağlık kontrolü özelliği henüz tam olarak implemente edilmedi (serverController).', null);
 
     // Audit log
     await logAuditEvent(
       req.user.id,
-      'SERVER_HEALTH_CHECK',
+      'SERVER_HEALTH_CHECK_ATTEMPT', // Eylem adını güncelledik
       'Server',
       null,
-      { summary },
+      { summary: { total: servers.length, status: 'NOT_IMPLEMENTED' } },
       req
     );
 
-    res.json({
-      success: true,
+    return res.status(501).json({
+      success: false,
+      message: 'Toplu sağlık kontrolü özelliği henüz implemente edilmemiştir.',
       data: {
-        summary,
-        results: healthResults,
+        summary: {
+          total: servers.length,
+          online: 0,
+          offline: 0,
+          avgResponseTime: 0
+        },
+        results: [], // Gerçek sonuçlar burada olmalı
         timestamp: new Date()
       }
     });
   } catch (error) {
-    console.error('Sağlık kontrolü hatası:', error);
+    logError('Sağlık kontrolü hatası (serverController):', error);
     res.status(500).json({
       success: false,
       message: 'Sağlık kontrolü yapılamadı'

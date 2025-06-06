@@ -3,7 +3,7 @@ const asyncHandler = require('express-async-handler');
 const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/authorize');
 const User = require('../models/User');
-const AuditLog = require('../models/AuditLog');
+const { logAuditEvent } = require('../utils/auditHelper');
 
 const router = express.Router();
 
@@ -36,13 +36,16 @@ router.put(
     }
     user.role = role;
     await user.save();
-    await AuditLog.create({
-      user: req.user._id,
-      action: 'update',
-      resourceType: 'User',
-      resourceId: user._id,
-      details: { role }
-    });
+    
+    await logAuditEvent(
+      req.user._id,
+      'update',
+      'User',
+      user._id,
+      { role },
+      req
+    );
+    
     res.json({ id: user._id, name: user.name, email: user.email, role: user.role });
   })
 );
@@ -58,12 +61,14 @@ router.delete(
       res.status(404);
       throw new Error('Kullanıcı bulunamadı');
     }
-    await AuditLog.create({
-      user: req.user._id,
-      action: 'delete',
-      resourceType: 'User',
-      resourceId: user._id
-    });
+    await logAuditEvent(
+      req.user._id,
+      'delete',
+      'User',
+      user._id,
+      {},
+      req
+    );
     res.json({ mesaj: 'Kullanıcı silindi' });
   })
 );

@@ -1,17 +1,25 @@
 const mongoose = require('mongoose');
-const dotenv = require('dotenv');
-
-dotenv.config();
+const { logError } = require('../../utils/errorLogger'); // errorLogger'ı içe aktar (yol düzeltildi)
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGODB_URI, {
+    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/jams', {
       useNewUrlParser: true,
-      useUnifiedTopology: true
+      useUnifiedTopology: true,
     });
-    console.log('MongoDB bağlantısı başarılı.');
+
+    console.log(`MongoDB bağlantısı başarılı: ${conn.connection.host}`);
+    
+    // Veritabanı bağlantısı için graceful shutdown listener
+    process.on('SIGINT', async () => {
+      console.log('SIGINT sinyali alındı, MongoDB bağlantısı kapatılıyor...');
+      await mongoose.connection.close(false);
+      console.log('MongoDB bağlantısı kapatıldı');
+      process.exit(0);
+    });
+
   } catch (error) {
-    console.error('MongoDB bağlantı hatası:', error);
+    logError(`MongoDB bağlantı hatası (db.js): ${error.message}`, error);
     process.exit(1);
   }
 };

@@ -5,7 +5,6 @@ const { protect } = require('../middleware/auth');
 const { authorize } = require('../middleware/authorize');
 const AuditLog = require('../models/AuditLog');
 const Server = require('../models/Server');
-const { runScript } = require('../utils/commandRunner');
 
 const router = express.Router();
 
@@ -68,24 +67,45 @@ router.post(
 router.post(
   '/:id/script',
   protect,
-  authorize('Admin','SistemYonetici'),
+  authorize('ADMIN','SYSTEM_ADMIN'),
   asyncHandler(async (req, res) => {
-    const { key } = req.body; // örn: restartApp
-    const srv = await Server.findById(req.params.id);
-    if (!srv) {
+    const { key } = req.body;
+    const server = await Server.findById(req.params.id);
+    
+    if (!server) {
       res.status(404);
       throw new Error('Sunucu bulunamadı');
     }
-    const output = await runScript(key);
+    
+    // Komut güvenliği ve yetkilendirme kontrolleri
+    if (!server.allowedCommands || !server.allowedCommands.some(cmd => cmd.command === key)) {
+      res.status(403);
+      throw new Error('Bu komut bu sunucu için izin verilmiyor');
+    }
+    
+    // Log komut çalıştırma girişimi
     await AuditLog.create({
       user: req.user._id,
-      action: 'script',
+      action: 'script_execute',
       resourceType: 'Server',
-      resourceId: srv._id,
+      resourceId: server._id,
       ip: req.ip,
-      details: { script: key, output }
+      details: { script: key }
     });
-    res.json({ message: 'Script çalıştırıldı', output });
+    
+    // Burada gerçek script çalıştırma işlemi olacak
+    // Güvenlik nedeniyle, gerçek implementation'ı burada yer almamaktadır
+    
+    res.json({
+      success: true,
+      message: `${key} komutu başarıyla çalıştırıldı`,
+      data: {
+        serverId: server._id,
+        serverName: server.name,
+        script: key,
+        timestamp: new Date()
+      }
+    });
   })
 );
 

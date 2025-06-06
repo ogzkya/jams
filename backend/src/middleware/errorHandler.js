@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const { logError: centralLogError } = require('../../../utils/errorLogger'); // errorLogger'ı içe aktar ve yeniden adlandır
 const AuditLog = require('../models/AuditLog');
 
 /**
@@ -43,87 +44,48 @@ const handleValidationErrors = async (req, res, next) => {
 /**
  * Genel hata yakalama middleware'i
  */
-const errorHandler = async (err, req, res, next) => {
-  console.error('Error:', err);
+const errorHandler = (err, req, res, next) => {
+  centralLogError('Global Error Handler Yakaladı:', err, {
+    path: req.path,
+    method: req.method,
+    user: req.user ? { id: req.user.id, username: req.user.username } : null,
+    statusCode: res.statusCode !== 200 ? res.statusCode : 500
+  });
 
-  // Audit log'a hata kaydı
   try {
-    await AuditLog.logError({
-      action: 'SYSTEM_ERROR',
-      user: req.user ? req.user._id : null,
-      username: req.user ? req.user.username : 'Anonymous',
-      userIP: req.ip || req.connection.remoteAddress,
-      userAgent: req.get('User-Agent'),
-      resource: { type: 'SYSTEM', name: req.originalUrl },
-      details: { 
-        description: 'Sistem hatası',
-        metadata: { 
-          errorMessage: err.message,
-          errorStack: process.env.NODE_ENV === 'development' ? err.stack : undefined
-        }
-      },
-      category: 'SYSTEM_ACCESS',
-      severity: 'HIGH'
-    });
-  } catch (logError) {
-    console.error('Audit log error:', logError);
+    if (require('../models/AuditLog')) { // Bu kontrol kalabilir
+      const AuditLog = require('../models/AuditLog');
+      AuditLog.create({
+        user: user ? user.id : null,
+        action: 'ERROR',
+        resource: 'System',
+        details: {
+          error: err.message,
+          path: req.path,
+          method: req.method,
+          stack: process.env.NODE_ENV === 'production' ? null : err.stack
+        },
+        ipAddress: req.ip || req.connection.remoteAddress,
+        userAgent: req.get('User-Agent'),
+        severity: 'HIGH'
+      }).catch(logErr => centralLogError('Audit log oluşturma hatası (errorHandler içinde):', logErr));
+    }
+  } catch (auditCatchError) {
+    centralLogError('AuditLog modeli yüklenirken veya kullanılırken hata (errorHandler içinde):', auditCatchError);
   }
-
-  // MongoDB duplicate key hatası
-  if (err.code === 11000) {
-    const field = Object.keys(err.keyPattern)[0];
-    return res.status(400).json({
-      success: false,
-      message: `${field} zaten kullanımda`,
-      field: field
-    });
-  }
-
-  // MongoDB validation hatası
-  if (err.name === 'ValidationError') {
-    const errors = Object.values(err.errors).map(error => ({
-      field: error.path,
-      message: error.message
-    }));
-    
-    return res.status(400).json({
-      success: false,
-      message: 'Veri doğrulama hatası',
-      errors: errors
-    });
-  }
-
-  // JWT hatası
-  if (err.name === 'JsonWebTokenError') {
-    return res.status(401).json({
-      success: false,
-      message: 'Geçersiz token'
-    });
-  }
-
-  if (err.name === 'TokenExpiredError') {
-    return res.status(401).json({
-      success: false,
-      message: 'Token süresi dolmuş'
-    });
-  }
-
-  // Cast hatası (geçersiz ObjectId)
-  if (err.name === 'CastError') {
-    return res.status(400).json({
-      success: false,
-      message: 'Geçersiz ID formatı'
-    });
-  }
-
-  // Varsayılan hata
-  const statusCode = err.statusCode || 500;
-  const message = err.message || 'Sunucu hatası';
-
+  
+  // HTTP status code
+  const statusCode = res.statusCode !== 200 ? res.statusCode : 500;
+  
+  // Response
   res.status(statusCode).json({
     success: false,
-    message: message,
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    message: err.message,
+    stack: process.env.NODE_ENV === 'production' ? null : err.stack,
+    error: {
+      code: err.code || 'SERVER_ERROR',
+      type: err.name || 'Error'
+    }
   });
 };
 

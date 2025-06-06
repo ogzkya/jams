@@ -139,18 +139,26 @@ const register = async (req, res) => {
  */
 const login = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, email, password } = req.body;
 
-    // Kullanıcıyı bul
-    const user = await User.findOne({ username }).populate('roles');
+    // Email veya username ile kullanıcıyı bul
+    const loginField = email || username;
+    
+    const user = await User.findOne({ 
+      $or: [
+        { email: loginField }, 
+        { username: loginField }
+      ]
+    }).populate('roles');
+    
 
     if (!user) {
       await AuditLog.logFailure({
         action: 'USER_LOGIN_FAILED',
-        username: username,
+        username: loginField,
         userIP: req.ip || req.connection.remoteAddress,
         userAgent: req.get('User-Agent'),
-        resource: { type: 'USER', name: username },
+        resource: { type: 'USER', name: loginField },
         details: { description: 'Kullanıcı bulunamadı' },
         category: 'AUTHENTICATION',
         severity: 'MEDIUM'
@@ -179,11 +187,12 @@ const login = async (req, res) => {
       return res.status(401).json({
         success: false,
         message: 'Hesap aktif değil'
-      });
-    }
+      });    }
 
-    // Hesap kilitli mi kontrol et
-    if (user.isLocked) {
+    // Hesap kilitli mi kontrol et (lockUntil ve isLocked)
+    const isCurrentlyLocked = user.isLocked || (user.lockUntil && user.lockUntil > Date.now());
+    
+    if (isCurrentlyLocked) {
       await AuditLog.logFailure({
         action: 'USER_LOGIN_FAILED',
         user: user._id,
@@ -199,11 +208,10 @@ const login = async (req, res) => {
       return res.status(401).json({
         success: false,
         message: 'Hesap kilitli - yönetici ile iletişime geçin'
-      });
-    }
+      });    }
 
     // Şifre kontrolü
-    const isPasswordValid = await user.comparePassword(password);
+    const isPasswordValid = await user.matchPassword(password);
 
     if (!isPasswordValid) {
       // Başarısız giriş denemesini kaydet
@@ -407,10 +415,8 @@ const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
-    const user = await User.findById(req.user._id);
-
-    // Mevcut şifre kontrolü
-    const isCurrentPasswordValid = await user.comparePassword(currentPassword);
+    const user = await User.findById(req.user._id);    // Mevcut şifre kontrolü
+    const isCurrentPasswordValid = await user.matchPassword(currentPassword);
     if (!isCurrentPasswordValid) {
       await AuditLog.logFailure({
         action: 'PASSWORD_CHANGE_FAILED',
@@ -470,11 +476,39 @@ const changePassword = async (req, res) => {
   }
 };
 
+/**
+ * Debug/test endpoint
+ */
+const debugAdmin = async (req, res) => {
+  try {
+    // Sadece test amaçlı
+    const adminCount = await User.countDocuments({ 
+      'roles.name': 'ADMIN',
+      isActive: true
+    });
+
+    res.json({
+      success: true,
+      data: {
+        adminCount,
+        environment: process.env.NODE_ENV || 'development',
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Debug fonksiyonu hatası'
+    });
+  }
+};
+
 module.exports = {
   register,
   login,
   logout,
   getProfile,
   updateProfile,
-  changePassword
+  changePassword,
+  debugAdmin  // Fonksiyonu export ediyoruz
 };

@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -10,79 +10,99 @@ import {
   InputAdornment,
   IconButton,
   CircularProgress,
+  Avatar,
+  Link,
 } from '@mui/material';
 import {
   Visibility,
   VisibilityOff,
-  Lock,
+  LockOutlined,
   Email,
+  Person,
 } from '@mui/icons-material';
-import { AuthContext } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext'; // AuthContext'ten setError almak için
+import { logError } from '../../../utils/errorLogger'; // errorLogger'ı içe aktar (yolun doğruluğunu kontrol edin)
 
 export default function Login() {
-  const [email, setEmail] = useState('');
+  const { login, error: authError, setError: setAuthError } = useAuth(); // setError'ı AuthContext'ten alın veya lokal state kullanın
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { login } = useContext(AuthContext);
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (user) {
+      const redirectPath = localStorage.getItem('redirectPath') || '/';
+      navigate(redirectPath);
+      localStorage.removeItem('redirectPath');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email');
+    const password = formData.get('password');
+
     setLoading(true);
-    setError('');
-    
+    // setLocalError(null); // Lokal error state kullanılıyorsa
+    if (setAuthError) setAuthError(null); // AuthContext'teki error'u temizle
+
     try {
-      await login(email, password);
-      navigate('/dashboard');
+      const result = await login({ email, password });
+      if (!result.success) {
+        // login fonksiyonu zaten setError çağırıyorsa burada tekrar çağırmaya gerek yok.
+        // Eğer login fonksiyonu hata mesajını döndürüyorsa:
+        // setLocalError(result.message || 'Giriş başarısız oldu.');
+        // logError('Login attempt failed by login function logic', { email, message: result.message });
+      }
+      // Başarılı giriş durumunda yönlendirme AuthContext içinde yapılabilir.
     } catch (err) {
-      setError('Giriş başarısız. Lütfen bilgilerinizi kontrol edin.');
+      // Bu blok genellikle login fonksiyonu bir exception fırlattığında çalışır.
+      // AuthContext'teki login fonksiyonu zaten kendi içinde hata yönetimi yapıyorsa (setError çağırıyorsa),
+      // bu catch bloğu sadece beklenmedik hatalar için olabilir.
+      const errorMessage = err.response?.data?.message || err.message || 'Giriş sırasında beklenmedik bir hata oluştu.';
+      if (setAuthError) {
+        setAuthError(errorMessage);
+      } else {
+        // setLocalError(errorMessage); // Lokal error state kullanılıyorsa
+      }
+      logError('Login page handleSubmit catch block error', err, { email });
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleClickShowPassword = () => {
-    setShowPassword(!showPassword);
   };
 
   return (
     <Container component="main" maxWidth="xs">
       <Box
         sx={{
-          marginTop: 8,
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
+          justifyContent: 'center',
           minHeight: '100vh',
         }}
       >
         <Paper
-          elevation={6}
+          elevation={3}
           sx={{
-            padding: 4,
+            p: 4,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
+            borderRadius: 2,
             width: '100%',
           }}
         >
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              mb: 3,
-            }}
-          >
-            <Lock sx={{ fontSize: 40, color: 'primary.main', mr: 1 }} />
-            <Typography component="h1" variant="h4" color="primary.main" fontWeight="bold">
-              JAMS
-            </Typography>
-          </Box>
-          
-          <Typography component="h2" variant="h5" sx={{ mb: 3 }}>
+          <Avatar sx={{ m: 1, bgcolor: 'primary.main' }}>
+            <LockOutlined />
+          </Avatar>
+          <Typography component="h1" variant="h5" gutterBottom>
             Giriş Yap
           </Typography>
 
@@ -92,22 +112,22 @@ export default function Login() {
             </Alert>
           )}
 
-          <Box component="form" onSubmit={handleSubmit} sx={{ width: '100%' }}>
+          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1, width: '100%' }}>
             <TextField
               margin="normal"
               required
               fullWidth
-              id="email"
-              label="E-posta Adresi"
-              name="email"
-              autoComplete="email"
+              id="username"
+              label="Kullanıcı Adı veya E-posta"
+              name="username"
+              autoComplete="username"
               autoFocus
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Email />
+                    <Person />
                   </InputAdornment>
                 ),
               }}
@@ -117,7 +137,7 @@ export default function Login() {
               required
               fullWidth
               name="password"
-              label="Parola"
+              label="Şifre"
               type={showPassword ? 'text' : 'password'}
               id="password"
               autoComplete="current-password"
@@ -126,14 +146,14 @@ export default function Login() {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <Lock />
+                    <LockOutlined />
                   </InputAdornment>
                 ),
                 endAdornment: (
                   <InputAdornment position="end">
                     <IconButton
                       aria-label="toggle password visibility"
-                      onClick={handleClickShowPassword}
+                      onClick={() => setShowPassword(!showPassword)}
                       edge="end"
                     >
                       {showPassword ? <VisibilityOff /> : <Visibility />}
@@ -146,17 +166,18 @@ export default function Login() {
               type="submit"
               fullWidth
               variant="contained"
-              sx={{ mt: 3, mb: 2, py: 1.5 }}
+              sx={{ mt: 3, mb: 2 }}
               disabled={loading}
             >
-              {loading ? <CircularProgress size={24} /> : 'Giriş Yap'}
+              {loading ? 'Giriş Yapılıyor...' : 'Giriş Yap'}
             </Button>
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              <Link href="#" variant="body2" onClick={(e) => e.preventDefault()}>
+                Şifreni mi unuttun?
+              </Link>
+            </Box>
           </Box>
         </Paper>
-
-        <Typography variant="body2" color="text.secondary" align="center" sx={{ mt: 5 }}>
-          JAMS - Kurumsal Yönetim Sistemi v1.0.0
-        </Typography>
       </Box>
     </Container>
   );

@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const { logError } = require('../../../utils/errorLogger');
 
 // Şifreleme algoritması
 const ALGORITHM = 'aes-256-gcm';
@@ -48,6 +49,7 @@ const encrypt = (text) => {
     
     return result.toString('base64');
   } catch (error) {
+    logError('ERROR', 'Şifreleme hatası', error, { textLength: text?.length });
     throw new Error('Şifreleme hatası: ' + error.message);
   }
 };

@@ -6,14 +6,16 @@ const locationSchema = new mongoose.Schema({
     required: [true, 'Lokasyon adı gereklidir'],
     trim: true,
     maxlength: [100, 'Lokasyon adı en fazla 100 karakter olmalıdır']
-  },  type: {
+  },  
+  type: {
     type: String,
     required: [true, 'Lokasyon tipi gereklidir'],
     enum: {
-      values: ['AnaBina', 'Kat', 'Bolum', 'Oda', 'UzakLokasyon'],
+      values: ['MAIN_BUILDING', 'FLOOR', 'SECTION', 'ROOM', 'DEPARTMENT', 'UNIT', 'REMOTE_SITE'],
       message: 'Geçersiz lokasyon tipi'
     }
-  },code: {
+  },
+  code: {
     type: String,
     unique: true,
     sparse: true, // null değerlere izin ver ama unique olanları kontrol et
@@ -66,7 +68,8 @@ const locationSchema = new mongoose.Schema({
   
   // Oda için özel alanlar
   roomInfo: {
-    roomNumber: String,    roomType: {
+    roomNumber: String,    
+    roomType: {
       type: String,
       enum: ['Ofis', 'SistemOdasi', 'ElektrikOdasi', 'ToplantOdasi', 'Depo', 'Banyo', 'Koridor', 'Diger']
     },
@@ -156,42 +159,35 @@ locationSchema.index({ 'roomInfo.roomType': 1 });
 locationSchema.index({ tags: 1 });
 
 // Pre-save middleware - kod üretimi
-locationSchema.pre('save', async function(next) {
-  if (!this.code) {
-    if (this.type === 'AnaBina') {
-      // Ana bina için basit kod
-      this.code = this.name.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, '') + 'B';
-    } else if (this.parent) {
-      try {
-        // Parent'ı populate et
-        await this.populate('parent');
+locationSchema.pre('save', function(next) {
+  if (!this.code && this.parent) {
+    // Otomatik kod üretimi için parent kodu kullan
+    this.populate('parent', 'code')
+      .then(() => {
         if (this.parent && this.parent.code) {
+          // Örnek: Ana bina "MB", kat "MB-F1", oda "MB-F1-R101"
           const parentCode = this.parent.code;
           switch (this.type) {
-            case 'Kat':
-              this.code = `${parentCode}-K${this.floorInfo?.level || '1'}${this.floorInfo?.section || ''}`;
+            case 'FLOOR':
+              this.code = `${parentCode}-F${this.floorInfo.level}${this.floorInfo.section || ''}`;
               break;
-            case 'Oda':
-              this.code = `${parentCode}-O${this.roomInfo?.roomNumber || Math.floor(Math.random() * 1000)}`;
+            case 'ROOM':
+              this.code = `${parentCode}-R${this.roomInfo.roomNumber}`;
               break;
-            case 'Bolum':
-              this.code = `${parentCode}-${this.name.substring(0, 3).toUpperCase().replace(/[^A-Z]/g, '')}`;
+            case 'DEPARTMENT':
+            case 'UNIT':
+              this.code = `${parentCode}-${this.name.substring(0, 3).toUpperCase()}`;
               break;
             default:
               this.code = `${parentCode}-${Date.now().toString().slice(-4)}`;
           }
         }
-      } catch (error) {
-        console.log('Parent populate hatası:', error);
-        // Fallback kod üretimi
-        this.code = `LOC-${Date.now().toString().slice(-6)}`;
-      }
-    } else {
-      // Parent yok ise basit kod
-      this.code = `LOC-${Date.now().toString().slice(-6)}`;
-    }
+        next();
+      })
+      .catch(next);
+  } else {
+    next();
   }
-  next();
 });
 
 module.exports = mongoose.model('Location', locationSchema);

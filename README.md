@@ -1,4 +1,4 @@
-# Modüler Kurumsal Yönetim Platformu
+# JAMS
 
 ## Proje Yapısı
 - backend/   → Express.js sunucu kodları  

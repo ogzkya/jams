@@ -1,0 +1,260 @@
+/* Component-specific styles */
+
+/* Dashboard Styles */
+.dashboard-container {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.stat-card {
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.stat-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+/* Login Page Styles */
+.login-container {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-form {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Data Grid Enhancements */
+.custom-data-grid {
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.custom-data-grid .MuiDataGrid-cell {
+  border-bottom: 1px solid rgba(224, 224, 224, 0.5);
+}
+
+.custom-data-grid .MuiDataGrid-columnHeaders {
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
+}
+
+/* Sidebar Styles */
+.sidebar {
+  background: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+}
+
+.sidebar-item {
+  transition: all 0.3s ease;
+  margin: 4px 8px;
+  border-radius: 8px;
+}
+
+.sidebar-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateX(5px);
+}
+
+.sidebar-item.active {
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+/* Form Enhancements */
+.form-container {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.form-field {
+  margin-bottom: 16px;
+}
+
+.form-button {
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.form-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+/* Alert Styles */
+.alert-success {
+  background: linear-gradient(90deg, #56ab2f 0%, #a8e6cf 100%);
+  color: white;
+  border: none;
+}
+
+.alert-error {
+  background: linear-gradient(90deg, #ff416c 0%, #ff4b2b 100%);
+  color: white;
+  border: none;
+}
+
+.alert-warning {
+  background: linear-gradient(90deg, #f7971e 0%, #ffd200 100%);
+  color: white;
+  border: none;
+}
+
+/* Table Styles */
+.custom-table {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.custom-table th {
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 600;
+  padding: 16px;
+  text-align: left;
+}
+
+.custom-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(224, 224, 224, 0.5);
+}
+
+.custom-table tr:hover {
+  background: rgba(102, 126, 234, 0.05);
+}
+
+/* Button Styles */
+.btn-primary {
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.btn-secondary {
+  background: linear-gradient(90deg, #757f9a 0%, #d7dde8 100%);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  color: #333;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-danger {
+  background: linear-gradient(90deg, #ff416c 0%, #ff4b2b 100%);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-success {
+  background: linear-gradient(90deg, #56ab2f 0%, #a8e6cf 100%);
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+/* Spinning Animation */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
+/* Additional animations for enhanced UX */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+/* Pulse animation for attention */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+/* Dark Theme Support */
+@media (prefers-color-scheme: dark) {
+  body {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: #ecf0f1;
+  }
+  
+  .form-container {
+    background: rgba(44, 62, 80, 0.95);
+    color: #ecf0f1;
+  }
+  
+  .custom-table {
+    background: rgba(44, 62, 80, 0.95);
+    color: #ecf0f1;
+  }
+}

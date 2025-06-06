@@ -4,20 +4,31 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
-require('dotenv').config();
+require('dotenv').config({ path: './backend/.env' });
 
-const authRoutes = require('./src/routes/auth');
-const userRoutes = require('./src/routes/users');
-const inventoryRoutes = require('./src/routes/inventory');
-const locationRoutes = require('./src/routes/locations');
-const passwordRoutes = require('./src/routes/passwords');
-const serverRoutes = require('./src/routes/servers');
-const auditRoutes = require('./src/routes/audit');
+const authRoutes = require('./backend/src/routes/auth');
+const userRoutes = require('./backend/src/routes/users');
+const inventoryRoutes = require('./backend/src/routes/inventory');
+// const locationRoutes = require('./backend/src/routes/locations');
+// const passwordRoutes = require('./backend/src/routes/passwords');
+// const serverRoutes = require('./backend/src/routes/servers');
+// const auditRoutes = require('./backend/src/routes/audit');
 
-const errorHandler = require('./src/middleware/errorHandler');
-const { initializeDefaultRoles } = require('./src/utils/defaultData');
+const { errorHandler } = require('./backend/src/middleware/errorHandler');
+const { initializeDefaultRoles } = require('./backend/src/utils/defaultData');
+const { logError } = require('./utils/errorLogger'); // errorLogger'ı içe aktar
 
+// Mongoose ayarları
+mongoose.set('strictQuery', false);
+mongoose.set('bufferCommands', false); // Buffer komutlarını devre dışı bırak
+
+// Express app oluştur
 const app = express();
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Güvenlik middleware'leri
 app.use(helmet());
@@ -38,10 +49,6 @@ const limiter = rateLimit({
 });
 app.use('/api', limiter);
 
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
 // Logging
 if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
@@ -49,33 +56,34 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('combined'));
 }
 
-// Statik dosyalar
-app.use('/uploads', express.static('uploads'));
-
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/inventory', inventoryRoutes);
-app.use('/api/locations', locationRoutes);
-app.use('/api/passwords', passwordRoutes);
-app.use('/api/servers', serverRoutes);
-app.use('/api/audit', auditRoutes);
+// app.use('/api/inventory', inventoryRoutes);
+// app.use('/api/locations', locationRoutes);
+// app.use('/api/passwords', passwordRoutes);
+// app.use('/api/servers', serverRoutes);
+// app.use('/api/audit', auditRoutes);
 
 // Ana sayfa
 app.get('/', (req, res) => {
   res.json({
-    message: 'Modüler Kurumsal Yönetim Platformu API',
+    message: 'JAMS API',
     version: '1.0.0',
     status: 'Çalışıyor',
-    endpoints: {
-      auth: '/api/auth',
-      users: '/api/users',
-      inventory: '/api/inventory',
-      locations: '/api/locations',
-      passwords: '/api/passwords',
-      servers: '/api/servers',
-      audit: '/api/audit'
-    }
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Sağlık kontrol endpoint'i
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development',
+    database: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected'
   });
 });
 
@@ -91,18 +99,39 @@ app.use('*', (req, res) => {
 });
 
 // MongoDB bağlantısı
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/kurumsal_yonetim_platform', {
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/jams', {
   useNewUrlParser: true,
   useUnifiedTopology: true,
+  serverSelectionTimeoutMS: 30000,
+  socketTimeoutMS: 120000,
+  connectTimeoutMS: 30000,
+  maxPoolSize: 10,
+  retryWrites: true,
+  w: 'majority',
 })
 .then(async () => {
   console.log('MongoDB bağlantısı başarılı');
-  // Varsayılan rolleri oluştur
-  await initializeDefaultRoles();
+  console.log(`Veritabanı: ${mongoose.connection.name}`);
+  
+  // Varsayılan rolleri oluştur - zaman aşımı kontrolü ile
+  try {
+    console.log('Varsayılan roller kontrol ediliyor...');
+    const initPromise = initializeDefaultRoles();
+    const timeoutPromise = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Varsayılan rollerin başlatılması 15 saniye içinde tamamlanamadı (zaman aşımı).')), 15000)
+    );
+    
+    await Promise.race([initPromise, timeoutPromise]);
+    console.log('Varsayılan roller başarıyla kontrol edildi.');
+  } catch (error) {
+    logError('Varsayılan roller oluşturulurken/kontrol edilirken hata oluştu:', error.message, error);
+    // Bu hata kritik değilse sunucunun çalışmaya devam etmesine izin verilebilir.
+    // Ancak, roller uygulamanın temel işleyişi için kritikse, burada process.exit(1) düşünülebilir.
+  }
 })
-.catch((error) => {
-  console.error('MongoDB bağlantı hatası:', error);
-  process.exit(1);
+.catch(error => { // mongoose.connect() için genel catch bloğu
+  logError('MongoDB ilk bağlantı hatası. Sunucu başlatılamadı.', error.message, error);
+  process.exit(1); // Bağlantı başarısız olursa sunucuyu sonlandır
 });
 
 const PORT = process.env.PORT || 3000;

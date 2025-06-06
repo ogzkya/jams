@@ -1,4 +1,5 @@
 const AuditLog = require('../models/AuditLog');
+const { logError } = require('../../../utils/errorLogger');
 
 /**
  * Audit olay logu oluştur
@@ -42,9 +43,10 @@ async function logAuditEvent(userId, action, resource, resourceId = null, detail
 
     return auditLog;
   } catch (error) {
-    console.error('Audit log oluşturma hatası:', error);
+    logError('Audit log oluşturma hatası auditHelper içinde', error, {
+      userId, action, resource, resourceId
+    });
     // Audit log hatası sistem işleyişini durdurmamalı
-    return null;
   }
 }
 
@@ -55,10 +57,8 @@ async function logAuditEvent(userId, action, resource, resourceId = null, detail
  */
 function getClientIP(req) {
   return req.ip || 
-         req.connection?.remoteAddress || 
-         req.socket?.remoteAddress ||
-         req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
-         req.headers['x-real-ip'] ||
+         req.headers['x-forwarded-for'] || 
+         req.connection.remoteAddress || 
          'unknown';
 }
 
@@ -136,7 +136,7 @@ async function logBulkAuditEvents(events) {
     await AuditLog.insertMany(auditLogs);
     return auditLogs;
   } catch (error) {
-    console.error('Toplu audit log oluşturma hatası:', error);
+    logError('Toplu audit log oluşturma hatası:', error, { eventCount: events?.length });
     return null;
   }
 }
@@ -266,7 +266,7 @@ async function logPermissionDenied(userId, resource, action, req) {
 async function logPasswordChange(userId, changedBy, req) {
   await logAuditEvent(
     changedBy,
-    'PASSWORD_CHANGE',
+    'PASSWORD_CHANGED',
     'User',
     userId,
     {
@@ -353,18 +353,22 @@ async function logSuspiciousActivity(userId, activityType, details, req) {
  * @param {Object} req - Request objesi
  */
 async function logBruteForceAttempt(identifier, attemptCount, req) {
-  await logAuditEvent(
-    null,
-    'BRUTE_FORCE_ATTEMPT',
-    'Security',
-    null,
-    {
-      identifier,
-      attemptCount,
-      detectionTime: new Date()
-    },
-    req
-  );
+  try {
+    await logAuditEvent(
+      null,
+      'BRUTE_FORCE_ATTEMPT',
+      'Security',
+      null,
+      {
+        identifier,
+        attemptCount,
+        detectionTime: new Date()
+      },
+      req
+    );
+  } catch (error) {
+    logError('Brute force log hatası:', error, { identifier, attemptCount });
+  }
 }
 
 module.exports = {

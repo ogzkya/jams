@@ -7,6 +7,10 @@ const auditSchema = new mongoose.Schema({
     ref: 'User'
   },
   
+  username: {
+    type: String
+  },
+  
   // Olay bilgileri
   action: {
     type: String,
@@ -14,7 +18,7 @@ const auditSchema = new mongoose.Schema({
     enum: {
       values: [
         // Kullanıcı eylemleri
-        'USER_LOGIN', 'USER_LOGOUT', 'USER_LOGIN_FAILED', 'USER_CREATED', 'USER_UPDATED', 'USER_DELETED', 'USER_LOCKED', 'USER_UNLOCKED',
+        'USER_LOGIN', 'USER_LOGOUT', 'USER_LOGIN_FAILED', 'USER_CREATED', 'USER_UPDATED', 'USER_DELETED', 'USER_LOCKED', 'USER_UNLOCKED', 'USER_REGISTRATION_FAILED',
         
         // Envanter eylemleri
         'DEVICE_CREATED', 'DEVICE_UPDATED', 'DEVICE_DELETED', 'DEVICE_MOVED', 'DEVICE_ASSIGNED', 'DEVICE_UNASSIGNED', 'QR_GENERATED', 'QR_SCANNED',
@@ -39,25 +43,42 @@ const auditSchema = new mongoose.Schema({
   },
   
   // Kaynak bilgileri
+  resource: {
+    type: mongoose.Schema.Types.Mixed
+  },
+  
   resourceType: {
     type: String,
-    required: [true, 'Kaynak tipi gereklidir'],
     enum: ['USER', 'DEVICE', 'LOCATION', 'PASSWORD', 'SERVER', 'ROLE', 'SYSTEM', 'OTHER']
   },
   resourceId: mongoose.Schema.Types.ObjectId,
   
   // IP adresi
   ip: {
+    type: String
+  },
+  
+  userIP: {
+    type: String
+  },
+  
+  userAgent: {
+    type: String
+  },
+  
+  category: {
     type: String,
-    required: true,
-    validate: {
-      validator: function(v) {
-        // IPv4 veya IPv6 formatını kontrol et
-        return /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(v) ||
-               /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/.test(v);
-      },
-      message: 'Geçerli bir IP adresi giriniz'
-    }
+    enum: ['AUTHENTICATION', 'AUTHORIZATION', 'DATA', 'SYSTEM', 'SECURITY', 'OTHER']
+  },
+  
+  severity: {
+    type: String,
+    enum: ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']
+  },
+  
+  result: {
+    type: String,
+    enum: ['SUCCESS', 'FAILURE', 'ERROR']
   },
   
   // Zaman damgası (otomatik createdAt yerine manuel kontrol için)
@@ -94,23 +115,25 @@ auditSchema.index({
 });
 
 // Static metodlar
-auditSchema.statics.createLog = function({
-  action,
-  user,
-  resourceType,
-  resourceId,
-  ip,
-  details
-}) {
-  return this.create({
-    action,
-    user,
-    resourceType,
-    resourceId,
-    ip,
-    details,
+auditSchema.statics.createLog = function(data) {
+  const logData = {
+    action: data.action,
+    user: data.user,
+    username: data.username,
+    resource: data.resource,
+    resourceType: data.resourceType,
+    resourceId: data.resourceId,
+    ip: data.ip || data.userIP,
+    userIP: data.userIP,
+    userAgent: data.userAgent,
+    category: data.category,
+    severity: data.severity,
+    result: data.result,
+    details: data.details,
     timestamp: new Date()
-  });
+  };
+  
+  return this.create(logData);
 };
 
 // Başarılı eylem logu

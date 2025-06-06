@@ -16,8 +16,6 @@ import {
   Menu,
   MenuItem,
   Divider,
-  useTheme,
-  useMediaQuery,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -26,6 +24,7 @@ import {
   Security as SecurityIcon,
   Computer as ComputerIcon,
   People as PeopleIcon,
+  LocationOn as LocationIcon,
   AccountCircle,
   Logout,
   Settings,
@@ -41,16 +40,14 @@ const menuItems = [
   { text: 'Kimlik Bilgileri', icon: <SecurityIcon />, path: '/credentials' },
   { text: 'Sunucular', icon: <ComputerIcon />, path: '/servers' },
   { text: 'Kullanıcılar', icon: <PeopleIcon />, path: '/users' },
+  { text: 'Lokasyonlar', icon: <LocationIcon />, path: '/locations' },
 ];
 
 export default function Layout({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [anchorEl, setAnchorEl] = useState(null);
-  const navigate = useNavigate();
+  const [anchorEl, setAnchorEl] = useState(null);  const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuth();
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -69,51 +66,80 @@ export default function Layout({ children }) {
     navigate('/login');
     handleProfileMenuClose();
   };
-
   const drawer = (
-    <div>
-      <Toolbar>
-        <Typography variant="h6" noWrap component="div" sx={{ color: 'primary.main', fontWeight: 'bold' }}>
-          JAMS
+    <Box
+      sx={{
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        height: '100%',
+        color: 'white',
+      }}
+    >
+      <Toolbar sx={{ justifyContent: 'center', py: 2 }}>
+        <Typography 
+          variant="h5" 
+          component="div" 
+          sx={{ 
+            color: 'white', 
+            fontWeight: 'bold',
+            textShadow: '0 2px 4px rgba(0,0,0,0.3)',
+            letterSpacing: '0.1em'
+          }}
+        >
+          🏢 JAMS
         </Typography>
       </Toolbar>
-      <Divider />
-      <List>
+      <Divider sx={{ backgroundColor: 'rgba(255,255,255,0.2)' }} />
+      <List sx={{ px: 1, pt: 2 }}>
         {menuItems.map((item) => (
-          <ListItem key={item.text} disablePadding>
+          <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
             <ListItemButton
               selected={location.pathname === item.path}
               onClick={() => navigate(item.path)}
               sx={{
+                borderRadius: 2,
+                mx: 1,
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  backgroundColor: 'rgba(255,255,255,0.1)',
+                  transform: 'translateX(4px)',
+                },
                 '&.Mui-selected': {
-                  backgroundColor: 'primary.main',
-                  color: 'white',
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  backdropFilter: 'blur(10px)',
                   '&:hover': {
-                    backgroundColor: 'primary.dark',
-                  },
-                  '& .MuiListItemIcon-root': {
-                    color: 'white',
+                    backgroundColor: 'rgba(255,255,255,0.25)',
                   },
                 },
               }}
             >
-              <ListItemIcon>{item.icon}</ListItemIcon>
-              <ListItemText primary={item.text} />
+              <ListItemIcon sx={{ color: 'white', minWidth: 40 }}>
+                {item.icon}
+              </ListItemIcon>
+              <ListItemText 
+                primary={item.text} 
+                sx={{ 
+                  '& .MuiTypography-root': { 
+                    fontWeight: location.pathname === item.path ? 600 : 400 
+                  } 
+                }} 
+              />
             </ListItemButton>
           </ListItem>
         ))}
       </List>
-    </div>
+    </Box>
   );
 
   return (
     <Box sx={{ display: 'flex' }}>
-      <CssBaseline />
-      <AppBar
+      <CssBaseline />      <AppBar
         position="fixed"
         sx={{
           width: { md: `calc(100% - ${drawerWidth}px)` },
           ml: { md: `${drawerWidth}px` },
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          backdropFilter: 'blur(10px)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.1)',
         }}
       >
         <Toolbar>

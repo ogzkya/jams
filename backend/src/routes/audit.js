@@ -3,7 +3,7 @@ const router = express.Router();
 const auditController = require('../controllers/auditController');
 const { authenticateToken } = require('../middleware/auth');
 const { requirePermission } = require('../middleware/rbac');
-const rbacMiddleware = require('../middlewares/rbacMiddleware');
+const { checkRole } = require('../middleware/rbacMiddleware');
 
 // Audit log route'ları
 // Tüm audit route'ları için kimlik doğrulama gerekli
@@ -105,7 +105,8 @@ router.get('/user-activity/:userId',
  * @access  AUDIT_VIEW yetkisi gerekli - yalnızca admin
  */
 router.get('/system-activity', 
-  rbacMiddleware(['AUDIT_VIEW'], ['ADMIN', 'SYSTEM_ADMIN']), 
+  checkRole(['ADMIN', 'SYSTEM_ADMIN']),
+  requirePermission('AUDIT_VIEW'), 
   auditController.getSystemActivityReport
 );
 
@@ -135,7 +136,8 @@ router.get('/export',
  * @access  AUDIT_DELETE yetkisi gerekli - yalnızca sistem admin
  */
 router.delete('/cleanup', 
-  rbacMiddleware(['AUDIT_DELETE'], ['ADMIN', 'SYSTEM_ADMIN']), 
+  checkRole(['ADMIN', 'SYSTEM_ADMIN']),
+  requirePermission('AUDIT_DELETE'), 
   auditController.cleanupOldLogs
 );
 

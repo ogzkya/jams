@@ -2,6 +2,7 @@ const AuditLog = require('../models/AuditLog');
 const User = require('../models/User');
 const { validationResult } = require('express-validator');
 const { logAuditEvent } = require('../utils/auditHelper');
+const { logError } = require('../../../utils/errorLogger'); // errorLogger'ı içe aktar
 
 const auditController = {
   /**
@@ -72,7 +73,7 @@ const auditController = {
         }
       });
     } catch (error) {
-      console.error('Audit logları getirme hatası:', error);
+      logError('Audit logları getirme hatası (auditController):', error, { query: req.query });
       res.status(500).json({
         success: false,
         message: 'Audit logları getirilemedi'
@@ -112,7 +113,7 @@ const auditController = {
         data: auditLog
       });
     } catch (error) {
-      console.error('Audit log getirme hatası:', error);
+      logError('Audit log getirme hatası (auditController):', error, { auditId: req.params.id });
       res.status(500).json({
         success: false,
         message: 'Audit log getirilemedi'
@@ -186,7 +187,7 @@ const auditController = {
         }
       });
     } catch (error) {
-      console.error('Kullanıcı audit logları getirme hatası:', error);
+      logError('Kullanıcı audit logları getirme hatası (auditController):', error, { targetUserId: req.params.userId, query: req.query });
       res.status(500).json({
         success: false,
         message: 'Kullanıcı audit logları getirilemedi'
@@ -245,7 +246,7 @@ const auditController = {
         }
       });
     } catch (error) {
-      console.error('Aksiyon audit logları getirme hatası:', error);
+      logError('Aksiyon audit logları getirme hatası (auditController):', error, { action: req.params.action, query: req.query });
       res.status(500).json({
         success: false,
         message: 'Aksiyon audit logları getirilemedi'
@@ -304,7 +305,7 @@ const auditController = {
         }
       });
     } catch (error) {
-      console.error('Kaynak audit logları getirme hatası:', error);
+      logError('Kaynak audit logları getirme hatası (auditController):', error, { resource: req.params.resource, query: req.query });
       res.status(500).json({
         success: false,
         message: 'Kaynak audit logları getirilemedi'
@@ -367,7 +368,7 @@ const auditController = {
         }
       });
     } catch (error) {
-      console.error('Tarih aralığı audit logları getirme hatası:', error);
+      logError('Tarih aralığı audit logları getirme hatası (auditController):', error, { query: req.query });
       res.status(500).json({
         success: false,
         message: 'Tarih aralığı audit logları getirilemedi'
@@ -442,7 +443,7 @@ const auditController = {
         }
       });
     } catch (error) {
-      console.error('Güvenlik olayları getirme hatası:', error);
+      logError('Güvenlik olayları getirme hatası (auditController):', error, { query: req.query });
       res.status(500).json({
         success: false,
         message: 'Güvenlik olayları getirilemedi'
@@ -561,7 +562,7 @@ const auditController = {
         }
       });
     } catch (error) {
-      console.error('Audit istatistikleri getirme hatası:', error);
+      logError('Audit istatistikleri getirme hatası (auditController):', error, { query: req.query });
       res.status(500).json({
         success: false,
         message: 'Audit istatistikleri getirilemedi'
@@ -664,7 +665,7 @@ const auditController = {
         }
       });
     } catch (error) {
-      console.error('Kullanıcı aktivite raporu getirme hatası:', error);
+      logError('Kullanıcı aktivite raporu getirme hatası (auditController):', error, { targetUserId: req.params.userId, query: req.query });
       res.status(500).json({
         success: false,
         message: 'Kullanıcı aktivite raporu getirilemedi'
@@ -770,7 +771,7 @@ const auditController = {
         }
       });
     } catch (error) {
-      console.error('Sistem aktivite raporu getirme hatası:', error);
+      logError('Sistem aktivite raporu getirme hatası (auditController):', error, { query: req.query });
       res.status(500).json({
         success: false,
         message: 'Sistem aktivite raporu getirilemedi'
@@ -870,7 +871,7 @@ const auditController = {
         }
       });
     } catch (error) {
-      console.error('Audit log arama hatası:', error);
+      logError('Audit log arama hatası (auditController):', error, { body: req.body });
       res.status(500).json({
         success: false,
         message: 'Audit log araması gerçekleştirilemedi'
@@ -907,7 +908,7 @@ const auditController = {
         }
       });
     } catch (error) {
-      console.error('Audit log export hatası:', error);
+      logError('Audit log export hatası (auditController):', error, { query: req.query });
       res.status(500).json({
         success: false,
         message: 'Audit logları dışa aktarılamadı'
@@ -949,7 +950,7 @@ const auditController = {
         }
       });
     } catch (error) {
-      console.error('Audit log temizleme hatası:', error);
+      logError('Audit log temizleme hatası (auditController):', error, { body: req.body });
       res.status(500).json({
         success: false,
         message: 'Audit logları temizlenemedi'
@@ -1028,7 +1029,7 @@ const auditController = {
         }
       });
     } catch (error) {
-      console.error('Dashboard verisi getirme hatası:', error);
+      logError('Dashboard verisi getirme hatası (auditController):', error);
       res.status(500).json({
         success: false,
         message: 'Dashboard verileri getirilemedi'
@@ -1052,7 +1053,7 @@ const auditController = {
         }
       });
     } catch (error) {
-      console.error('Gerçek zamanlı olay hatası:', error);
+      logError('Gerçek zamanlı olay hatası (auditController):', error);
       res.status(500).json({
         success: false,
         message: 'Gerçek zamanlı olaylar başlatılamadı'

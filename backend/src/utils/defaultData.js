@@ -1,11 +1,24 @@
 const Role = require('../models/Role');
+const { logError, logWarning } = require('../../../utils/errorLogger'); // errorLogger'ı içe aktar
 
 /**
  * Varsayılan rolleri oluşturur
  */
 const initializeDefaultRoles = async () => {
   try {
-    const existingRoles = await Role.countDocuments();
+    console.log('Roller kontrol ediliyor...');
+    
+    // Daha güvenli yaklaşım: timeout ile sorgu
+    const countPromise = Role.countDocuments().maxTimeMS(10000);
+    let existingRoles;
+    
+    try {
+      existingRoles = await countPromise;
+      console.log(`Mevcut rol sayısı: ${existingRoles}`);
+    } catch (error) {
+      logWarning('Rol sayısı kontrol edilemedi, varsayılan roller oluşturuluyor:', { errorMessage: error.message });
+      existingRoles = 0; // Hata durumunda varsayılan rolleri oluştur
+    }
     
     if (existingRoles === 0) {
       console.log('Varsayılan roller oluşturuluyor...');
@@ -94,14 +107,11 @@ const initializeDefaultRoles = async () => {
       console.log('Roller zaten mevcut, yeni rol oluşturulmadı');
     }
   } catch (error) {
-    console.error('Varsayılan rol oluşturma hatası:', error);
+    logError('Varsayılan rol oluşturma hatası:', error);
     throw error;
   }
 };
 
-/**
- * Varsayılan admin kullanıcısı oluşturur
- */
 const initializeDefaultAdmin = async () => {
   try {
     const User = require('../models/User');
@@ -136,7 +146,7 @@ const initializeDefaultAdmin = async () => {
       console.log('ÖNEMLİ: İlk girişten sonra şifreyi değiştirin!');
     }
   } catch (error) {
-    console.error('Varsayılan admin oluşturma hatası:', error);
+    logError('Varsayılan admin oluşturma hatası:', error);
   }
 };
 

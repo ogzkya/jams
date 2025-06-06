@@ -1,9 +1,9 @@
 const express = require('express');
 const asyncHandler = require('express-async-handler');
-const { protect, authorize, authenticateToken } = require('../middleware/auth');
+const { protect, authorize } = require('../middleware/auth');
 const Location = require('../models/Location');
 const Device = require('../models/Device');
-const AuditLog = require('../models/AuditLog');
+const { logAuditEvent } = require('../utils/auditHelper');
 const router = express.Router();
 const { 
   getDevices, 
@@ -78,14 +78,26 @@ router.post('/:id/move',
 // CREATE Location
 router.post('/locations', protect, authorize('Admin','SistemYonetici'), asyncHandler(async (req, res) => {
   const loc = await Location.create(req.body);
-  await AuditLog.create({ user: req.user._id, action:'create', resourceType:'Location', resourceId: loc._id, ip:req.ip });
+  
+  await logAuditEvent(
+    req.user._id,
+    'create',
+    'Location',
+    loc._id,
+    { locationName: loc.name },
+    req
+  );
+  
   res.status(201).json(loc);
 }));
 
 // LIST Locations
 router.get('/locations', protect, asyncHandler(async (req, res) => {
   const list = await Location.find().populate('parent');
-  res.json(list);
+  res.status(200).json({
+    success: true,
+    data: { locations: list }
+  });
 }));
 
 // CREATE Device

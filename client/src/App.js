@@ -1,61 +1,64 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { CssBaseline } from '@mui/material';
+import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
-import PrivateRoute from './routes/PrivateRoute';
+import Layout from './components/Layout/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
-import Credentials from './pages/Credentials';
 import Servers from './pages/Servers';
+import Locations from './pages/Locations';
 import Users from './pages/Users';
-import Layout from './components/Layout';
+import Profile from './pages/Profile';
+import Settings from './pages/Settings';
+import PrivateRoute from './routes/PrivateRoute';
+import Unauthorized from './pages/Unauthorized';
+import NotFound from './pages/NotFound';
+import './styles/globals.css';
+import './styles/components.css';
 
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-    background: {
-      default: '#f5f5f5',
-      paper: '#ffffff',
-    },
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-  },
-});
-
-export default function App() {
+const App = () => {
   return (
-    <ThemeProvider theme={theme}>
+    <ThemeProvider>
       <CssBaseline />
-      <BrowserRouter>
-        <AuthProvider>
+      <AuthProvider>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <Routes>
+            {/* Giriş ve Hata Sayfaları */}
             <Route path="/login" element={<Login />} />
+            <Route path="/unauthorized" element={<Unauthorized />} />
+            <Route path="/404" element={<NotFound />} />
+            
+            {/* Ana Sayfa Yönlendirmesi */}
             <Route path="/" element={<Navigate to="/dashboard" />} />
-            <Route path="/*" element={
+
+            {/* Private Routes - Layout içinde */}
+            <Route element={
               <PrivateRoute>
-                <Layout>
-                  <Routes>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/inventory" element={<Inventory />} />
-                    <Route path="/credentials" element={<Credentials />} />
-                    <Route path="/servers" element={<Servers />} />
-                    <Route path="/users" element={<Users />} />
-                  </Routes>
-                </Layout>
+                <Layout />
               </PrivateRoute>
-            } />
+            }>
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/inventory/*" element={<Inventory />} />
+              <Route path="/servers/*" element={<Servers />} />
+              <Route path="/locations/*" element={<Locations />} />
+              <Route path="/users/*" element={
+                <PrivateRoute requiredRoles={['ADMIN', 'MANAGER']}>
+                  <Users />
+                </PrivateRoute>
+              } />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/settings" element={<Settings />} />
+            </Route>
+
+            {/* 404 Not Found */}
+            <Route path="*" element={<Navigate to="/404" />} />
           </Routes>
-        </AuthProvider>
-      </BrowserRouter>
+        </Router>
+      </AuthProvider>
     </ThemeProvider>
   );
-}
+};
+
+export default App;
